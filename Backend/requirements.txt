@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+azure-storage-blob
+SQLAlchemy
+pyodbc
+email-validator
