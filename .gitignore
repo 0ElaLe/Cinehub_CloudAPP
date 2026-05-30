@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Secrets — NUNCA subir al repositorio
+.env
+!.env.example
+
+# Node
+node_modules/
+
+# Vite build outputs
+Frontend/dist/
+Backend/static/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Azure
+.azure/

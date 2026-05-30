@@ -1,0 +1,76 @@
+# =============================================================================
+# CineHub — Deploy to Azure App Service
+# =============================================================================
+# Antes de usar este workflow, configura en GitHub > Settings > Secrets:
+#
+#   AZURE_WEBAPP_PUBLISH_PROFILE
+#     → Descárgalo desde Azure Portal:
+#       App Service > asp-cinehub-lab-app-01 > Get publish profile
+#
+# El workflow:
+#   1. Compila el frontend React con Vite → escribe en Backend/static/
+#   2. Instala dependencias Python
+#   3. Despliega la carpeta Backend/ al App Service
+# =============================================================================
+
+name: Deploy CineHub to Azure App Service
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: asp-cinehub-lab-app-01
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build frontend + Deploy backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Frontend: React + Vite ──────────────────────────────────────────────
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Build React frontend
+        working-directory: Frontend
+        env:
+          # String vacío → rutas relativas → mismo origen que el backend
+          VITE_API_BASE_URL: ""
+        run: npm run build
+        # Vite escribe en Backend/static/ (configurado en vite.config.js)
+
+      # ── Backend: Python / FastAPI ───────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        working-directory: Backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+
+      # ── Deploy ──────────────────────────────────────────────────────────────
+      - name: Deploy Backend/ to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: Backend
+          # Backend/static/ ya contiene el frontend compilado en el paso de Vite

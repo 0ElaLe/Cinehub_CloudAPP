@@ -28,6 +28,17 @@ from app.services.permission_service import (
 router = APIRouter(tags=["materials"])
 
 
+async def _upload_mock(file: UploadFile, container_name: str, blob_path: str) -> dict:
+    """Simula subida a Blob en modo mock (sin conexión real)."""
+    content = await file.read()
+    return {
+        "container_name": container_name,
+        "blob_path": blob_path,
+        "size_bytes": len(content),
+        "content_type": file.content_type or "application/octet-stream",
+    }
+
+
 @router.get("/materials/{material_id}/download")
 def download_material(
     material_id: int,
@@ -50,7 +61,7 @@ def download_material(
             current_user["usuario_id"],
             material_id,
             "DESCARGA",
-            "Descarga simulada en fase 2",
+            "Descarga desde Azure Blob Storage",
         )
 
         file_bytes = download_material_from_blob(
@@ -66,6 +77,7 @@ def download_material(
             },
         )
 
+    # Modo mock
     if not mock_user_has_material_access(current_user["usuario_id"], material_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -83,22 +95,16 @@ def download_material(
             "material_id": material_id,
             "tipo_interaccion": "DESCARGA",
             "fecha_interaccion": datetime.now(timezone.utc),
-            "comentario": "Descarga simulada en fase 2",
+            "comentario": "Descarga simulada en modo mock",
         }
     )
 
-   
-    file_bytes = download_material_from_blob(
-            material["container_name"],
-            material["blob_path"],
-    )
-
     return Response(
-            content=file_bytes,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f'attachment; filename="{material["nombre"]}"'
-            },
+        content=b"[Archivo simulado - modo mock activo, sin conexion a Blob Storage]",
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{material["nombre"]}"'
+        },
     )
 
 
@@ -123,7 +129,7 @@ async def upload_material(
                 detail="No tienes acceso para subir materiales a este proyecto",
             )
 
-        blob_result =  await upload_material_to_blob(file, container_name, blob_path)
+        blob_result = await upload_material_to_blob(file, container_name, blob_path)
 
         material = sql_repository.insert_material(
             db,
@@ -142,21 +148,22 @@ async def upload_material(
             current_user["usuario_id"],
             material["material_id"],
             "SUBIDA",
-            "Subida simulada en fase 2; metadata insertada en SQL",
+            "Subida a Azure Blob Storage; metadata insertada en Azure SQL",
         )
 
         return UploadMaterialResponse(
-            message="Metadata registrada en Azure SQL. Blob simulado en fase 2.",
+            message="Archivo subido a Azure Blob Storage. Metadata registrada en Azure SQL.",
             material=material,
         )
 
+    # Modo mock
     if not mock_user_has_project_access(current_user["usuario_id"], project_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes acceso para subir materiales a este proyecto",
         )
 
-    blob_result = await upload_material_mock(file, container_name, blob_path)
+    blob_result = await _upload_mock(file, container_name, blob_path)
 
     material = {
         "material_id": next_material_id(),
@@ -174,7 +181,7 @@ async def upload_material(
     MATERIALS.append(material)
 
     return UploadMaterialResponse(
-        message="Material registrado correctamente en modo mock",
+        message="Material registrado correctamente en modo mock (sin Blob Storage real)",
         material=material,
     )
 

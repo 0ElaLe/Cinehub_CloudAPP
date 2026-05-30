@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+// En producción (mismo origen), VITE_API_BASE_URL="" → rutas relativas.
+// En desarrollo, si no está definida, usa el backend local.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 function getToken() {
   return localStorage.getItem("cinehub_token");
